@@ -9,7 +9,7 @@ $db = $database->getConnection();
 // Consulta SQL para obtener los reportes de las transacciones por categoría
 $query = "SELECT categorias.nombre AS categoria, SUM(transacciones.monto) AS total
           FROM transacciones
-          INNER JOIN categorias ON transacciones.categoria = categorias.nombre
+          INNER JOIN categorias ON transacciones.categoria = categorias.id
           GROUP BY categorias.nombre";
 
 // Preparar y ejecutar la consulta
@@ -18,6 +18,12 @@ $stmt->execute();
 
 // Obtener los resultados de la consulta
 $reportes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Consulta SQL para obtener los reportes de las metas
+$query_metas = "SELECT nombre, objetivo, ahorro_actual FROM metas";
+$stmt_metas = $db->prepare($query_metas);
+$stmt_metas->execute();
+$metas = $stmt_metas->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -25,7 +31,7 @@ $reportes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reportes de Transacciones</title>
+    <title>Reportes de Transacciones y Metas</title>
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -64,7 +70,7 @@ $reportes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <div class="container mt-4">
         <h1 class="text-center">Reportes de Transacciones por Categoría</h1>
 
-        <!-- Tabla de Reportes -->
+        <!-- Tabla de Reportes de Transacciones -->
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -77,6 +83,28 @@ $reportes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <tr>
                         <td><?= htmlspecialchars($reporte['categoria']) ?></td>
                         <td>$<?= number_format($reporte['total'], 2) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <h1 class="text-center mt-5">Reportes de Metas Financieras</h1>
+
+        <!-- Tabla de Reportes de Metas -->
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Objetivo</th>
+                    <th>Ahorro Actual</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($metas as $meta): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($meta['nombre']) ?></td>
+                        <td>$<?= number_format($meta['objetivo'], 2) ?></td>
+                        <td>$<?= number_format($meta['ahorro_actual'], 2) ?></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -96,7 +124,7 @@ $reportes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         // SweetAlert de bienvenida
         Swal.fire({
             title: '¡Bienvenido!',
-            text: 'Navega por los reportes de tus transacciones.',
+            text: 'Navega por los reportes de tus transacciones y metas.',
             icon: 'info',
             confirmButtonText: 'Aceptar'
         });

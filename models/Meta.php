@@ -1,47 +1,50 @@
 <?php
-require_once __DIR__ . '/../config/Database.php';
-
 class Meta {
-    private $db;
+    private $conn;
+    private $table = 'metas';
 
-    public function __construct() {
-        $database = new Database();
-        $this->db = $database->getConnection();
+    // Constructor
+    public function __construct($db) {
+        $this->conn = $db;
     }
 
-    // Obtener todas las metas
-    public function obtenerMetas() {
-        try {
-            $query = "SELECT * FROM metas";
-            $stmt = $this->db->prepare($query);
-            $stmt->execute();
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            // Manejo de errores
-            echo "Error al obtener las metas: " . $e->getMessage();
-            return [];
+    // Método para actualizar el ahorro de la meta
+    public function actualizarAhorro($id, $ahorro_actual, $ahorro_objetivo) {
+        $query = "UPDATE " . $this->table . " SET ahorro_actual = :ahorro_actual, ahorro_objetivo = :ahorro_objetivo WHERE id = :id";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":id", $id);
+        $stmt->bindParam(":ahorro_actual", $ahorro_actual);
+        $stmt->bindParam(":ahorro_objetivo", $ahorro_objetivo);
+
+        if ($stmt->execute()) {
+            return true;
         }
+        return false;
     }
 
-    // Actualizar ahorro actual de una meta específica
-    public function actualizarMeta($id, $ahorro_actual) {
-        try {
-            $query = "UPDATE metas SET ahorro_actual = :ahorro_actual WHERE id = :id";
-            $stmt = $this->db->prepare($query);
-            $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-            $stmt->bindParam(':ahorro_actual', $ahorro_actual, PDO::PARAM_INT);
-            
-            // Ejecutar la consulta
-            if ($stmt->execute()) {
-                return true;
-            } else {
-                return false;
-            }
-        } catch (PDOException $e) {
-            // Manejo de errores
-            echo "Error al actualizar la meta: " . $e->getMessage();
-            return false;
+    // Método para eliminar una meta
+    public function eliminarMeta($id) {
+        $query = "DELETE FROM " . $this->table . " WHERE id = :id";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":id", $id);
+
+        if ($stmt->execute()) {
+            return true;
         }
+        return false;
+    }
+
+    // Método para obtener los datos de la meta
+    public function obtenerMeta($id) {
+        $query = "SELECT * FROM " . $this->table . " WHERE id = :id";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":id", $id);
+        $stmt->execute();
+
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 }
 ?>

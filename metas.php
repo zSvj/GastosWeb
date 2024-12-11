@@ -1,27 +1,59 @@
 <?php
-require_once "config/Database.php";
+require_once "config\Database.php";
 
 $database = new Database();
 $db = $database->getConnection();
 
+// Verifica si la conexión a la base de datos fue exitosa
+if (!$db) {
+    echo "Error en la conexión a la base de datos.";
+    exit;
+}
+
 // Verifica si se envió el formulario
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Verifica que el campo ahorro_objetivo exista antes de usarlo
-    $ahorro_objetivo = $_POST['ahorro_objetivo'] ?? 0; // Si no se define, el valor será 0
-    
-    // Suponiendo que también se tiene algún ID de la meta que se está editando
-    $id_meta = $_POST['id_meta'] ?? 0; // Asume que el ID de la meta se pasa con el formulario
-    
-    // Actualizar en la base de datos (por ejemplo)
-    $query = "UPDATE metas SET ahorro_objetivo = :ahorro_objetivo WHERE id = :id_meta";
-    $stmt = $db->prepare($query);
-    $stmt->bindParam(':ahorro_objetivo', $ahorro_objetivo);
-    $stmt->bindParam(':id_meta', $id_meta);
-    
-    if ($stmt->execute()) {
-        echo "Meta actualizada correctamente.";
+    // Verifica que los campos existan y asigna un valor predeterminado en caso de que no se definan
+    $ahorro_objetivo = $_POST['ahorro_objetivo'] ?? 0;
+    $nombre_meta = $_POST['nombre_meta'] ?? '';
+    $ahorro_actual = $_POST['ahorro_actual'] ?? 0;
+    $id_meta = $_POST['id_meta'] ?? 0;
+
+    // Verifica si los campos importantes están vacíos
+    if (empty($nombre_meta) || empty($ahorro_actual) || $ahorro_objetivo === '') {
+        echo "Por favor, completa todos los campos.";
     } else {
-        echo "Error al actualizar la meta.";
+        try {
+            // Si no se está editando una meta (es decir, $id_meta es 0), insertamos una nueva meta
+            if ($id_meta == 0) {
+                $query = "INSERT INTO metas (nombre, ahorro_actual, ahorro_objetivo) VALUES (:nombre_meta, :ahorro_actual, :ahorro_objetivo)";
+                $stmt = $db->prepare($query);
+                $stmt->bindParam(':nombre_meta', $nombre_meta);
+                $stmt->bindParam(':ahorro_actual', $ahorro_actual);
+                $stmt->bindParam(':ahorro_objetivo', $ahorro_objetivo);
+                
+                if ($stmt->execute()) {
+                    echo "Meta añadida correctamente.";
+                } else {
+                    echo "Error al añadir la meta.";
+                }
+            } else {
+                // Si se está editando una meta, actualizamos los valores
+                $query = "UPDATE metas SET nombre = :nombre_meta, ahorro_actual = :ahorro_actual, ahorro_objetivo = :ahorro_objetivo WHERE id = :id_meta";
+                $stmt = $db->prepare($query);
+                $stmt->bindParam(':nombre_meta', $nombre_meta);
+                $stmt->bindParam(':ahorro_actual', $ahorro_actual);
+                $stmt->bindParam(':ahorro_objetivo', $ahorro_objetivo);
+                $stmt->bindParam(':id_meta', $id_meta);
+                
+                if ($stmt->execute()) {
+                    echo "Meta actualizada correctamente.";
+                } else {
+                    echo "Error al actualizar la meta.";
+                }
+            }
+        } catch (PDOException $e) {
+            echo "Error: " . $e->getMessage();
+        }
     }
 }
 

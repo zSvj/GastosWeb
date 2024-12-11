@@ -1,56 +1,50 @@
 <?php
-session_start();
+// Incluir la conexión a la base de datos
+require_once "config/Database.php";
 
-require_once 'config/Database.php';
-
-// Crear conexión a la base de datos
+// Crear una nueva instancia de la base de datos
 $database = new Database();
 $db = $database->getConnection();
 
-// Consulta para obtener las transacciones
-$query = "SELECT * FROM transacciones";
+// Procesar el formulario de creación de una nueva transacción
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $tipo = $_POST['tipo'];
+    $categoria = $_POST['categoria'];
+    $monto = $_POST['monto'];
+    $descripcion = $_POST['descripcion'];
+
+    $query = "INSERT INTO transacciones (tipo, categoria, monto, descripcion, fecha)
+              VALUES (:tipo, :categoria, :monto, :descripcion, NOW())";
+
+    $stmt = $db->prepare($query);
+    $stmt->bindParam(':tipo', $tipo);
+    $stmt->bindParam(':categoria', $categoria);
+    $stmt->bindParam(':monto', $monto);
+    $stmt->bindParam(':descripcion', $descripcion);
+
+    if ($stmt->execute()) {
+        header("Location: transacciones.php");
+        exit();
+    } else {
+        echo "Error al registrar la transacción.";
+    }
+}
+
+// Consulta SQL para obtener las transacciones con el nombre de la categoría
+$query = "SELECT transacciones.id, categorias.nombre AS categoria, transacciones.monto, transacciones.descripcion, transacciones.fecha, transacciones.tipo
+          FROM transacciones
+          INNER JOIN categorias ON transacciones.categoria = categorias.id
+          ORDER BY transacciones.fecha DESC";
+
 $stmt = $db->prepare($query);
 $stmt->execute();
 $transacciones = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Verifica si hay un mensaje de éxito en la sesión
-if (isset($_SESSION['mensaje'])) {
-    echo "<script>
-            Swal.fire({
-                title: '¡Éxito!',
-                text: '" . $_SESSION['mensaje'] . "',
-                icon: 'success',
-                confirmButtonText: 'Aceptar'
-            });
-          </script>";
-
-    // Elimina el mensaje de la sesión después de mostrarlo
-    unset($_SESSION['mensaje']);
-}
-
-// Agregar nueva transacción
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $categoria = $_POST['categoria'];
-    $monto = $_POST['monto'];
-    $descripcion = $_POST['descripcion'];
-    $fecha = $_POST['fecha'];
-
-    // Inserta la nueva transacción en la base de datos
-    $insertQuery = "INSERT INTO transacciones (categoria, monto, descripcion, fecha) VALUES (:categoria, :monto, :descripcion, :fecha)";
-    $stmt = $db->prepare($insertQuery);
-    $stmt->bindParam(':categoria', $categoria);
-    $stmt->bindParam(':monto', $monto);
-    $stmt->bindParam(':descripcion', $descripcion);
-    $stmt->bindParam(':fecha', $fecha);
-
-    if ($stmt->execute()) {
-        $_SESSION['mensaje'] = 'Transacción agregada con éxito';
-        header("Location: transacciones.php"); // Redirige después de guardar
-        exit();
-    } else {
-        $_SESSION['mensaje'] = 'Hubo un error al agregar la transacción';
-    }
-}
+// Consulta SQL para obtener las categorías disponibles
+$queryCategorias = "SELECT id, nombre FROM categorias";
+$stmtCategorias = $db->prepare($queryCategorias);
+$stmtCategorias->execute();
+$categorias = $stmtCategorias->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -58,14 +52,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Transacciones</title>
+    <title>Transacciones</title>
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- SweetAlert2 CSS -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-    <!-- Barra de Navegación -->
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="index.php">Finanzas Personales</a>
@@ -93,36 +86,49 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     <!-- Contenido Principal -->
     <div class="container mt-4">
-        <h1>Lista de Transacciones</h1>
+        <h1 class="text-center">Transacciones Registradas</h1>
 
-        <!-- Formulario para Agregar Transacción -->
-        <div class="mb-4">
-            <h3>Agregar Nueva Transacción</h3>
-            <form action="transacciones.php" method="POST">
-                <div class="mb-3">
-                    <label for="categoria" class="form-label">Categoría</label>
-                    <input type="text" class="form-control" id="categoria" name="categoria" required>
-                </div>
-                <div class="mb-3">
-                    <label for="monto" class="form-label">Monto</label>
-                    <input type="number" class="form-control" id="monto" name="monto" required>
-                </div>
-                <div class="mb-3">
-                    <label for="descripcion" class="form-label">Descripción</label>
-                    <input type="text" class="form-control" id="descripcion" name="descripcion" required>
-                </div>
-                <div class="mb-3">
-                    <label for="fecha" class="form-label">Fecha</label>
-                    <input type="date" class="form-control" id="fecha" name="fecha" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Guardar Transacción</button>
-            </form>
+        <!-- Formulario para agregar una nueva transacción -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="h5">Agregar Nueva Transacción</h2>
+            </div>
+            <div class="card-body">
+                <form action="transacciones.php" method="POST">
+                    <div class="mb-3">
+                        <label for="tipo" class="form-label">Tipo</label>
+                        <select id="tipo" name="tipo" class="form-select" required>
+                            <option value="ingreso">Ingreso</option>
+                            <option value="gasto">Gasto</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="categoria" class="form-label">Categoría</label>
+                        <select id="categoria" name="categoria" class="form-select" required>
+                            <?php foreach ($categorias as $categoria): ?>
+                                <option value="<?= htmlspecialchars($categoria['id']) ?>"><?= htmlspecialchars($categoria['nombre']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="monto" class="form-label">Monto</label>
+                        <input type="number" step="0.01" id="monto" name="monto" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="descripcion" class="form-label">Descripción</label>
+                        <textarea id="descripcion" name="descripcion" class="form-control"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Agregar Transacción</button>
+                </form>
+            </div>
         </div>
 
-        <!-- Mostrar Transacciones -->
+        <!-- Tabla de Transacciones -->
         <table class="table table-bordered">
             <thead>
                 <tr>
+                    <th>ID</th>
+                    <th>Tipo</th>
                     <th>Categoría</th>
                     <th>Monto</th>
                     <th>Descripción</th>
@@ -133,13 +139,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <tbody>
                 <?php foreach ($transacciones as $transaccion): ?>
                     <tr>
+                        <td><?= htmlspecialchars($transaccion['id']) ?></td>
+                        <td><?= htmlspecialchars(ucfirst($transaccion['tipo'])) ?></td>
                         <td><?= htmlspecialchars($transaccion['categoria']) ?></td>
                         <td>$<?= number_format($transaccion['monto'], 2) ?></td>
                         <td><?= htmlspecialchars($transaccion['descripcion']) ?></td>
                         <td><?= htmlspecialchars($transaccion['fecha']) ?></td>
                         <td>
-                            <a href="editar_transaccion.php?id=<?= $transaccion['id'] ?>" class="btn btn-warning">Editar</a>
-                            <a href="eliminar_transaccion.php?id=<?= $transaccion['id'] ?>" class="btn btn-danger">Eliminar</a>
+                            <a href="editar_transaccion.php?id=<?= $transaccion['id'] ?>" class="btn btn-primary btn-sm">Editar</a>
+                            <a href="eliminar_transaccion.php?id=<?= $transaccion['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('¿Está seguro de que desea eliminar esta transacción?');">Eliminar</a>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -149,22 +157,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     <!-- Footer -->
     <footer class="bg-dark text-white text-center py-3 mt-4">
-        <p>&copy; 2024 Finanzas Personales. Todos los derechos reservados.</p>
+        <p>&copy; 2024 Gestión de Finanzas Personales. Todos los derechos reservados.</p>
     </footer>
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- SweetAlert2 Script -->
-    <script>
-        function mostrarSweetAlert() {
-            Swal.fire({
-                title: '¡Bienvenido!',
-                text: 'Navega por las metas, transacciones y reportes para gestionar tus finanzas.',
-                icon: 'success',
-                confirmButtonText: 'Aceptar'
-            });
-        }
-    </script>
 </body>
 </html>

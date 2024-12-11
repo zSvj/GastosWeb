@@ -62,6 +62,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <body>
     <div class="container mt-4">
         <h1>Editar Transacción</h1>
+
+        <!-- Mostrar Mensaje de Éxito/Error -->
+        <?php
+        if (isset($_SESSION['mensaje'])) {
+            echo "<script>
+                    Swal.fire({
+                        title: '" . $_SESSION['mensaje'] . "',
+                        icon: 'success',
+                        confirmButtonText: 'Aceptar'
+                    }).then(function() {
+                        window.location.href = 'transacciones.php';
+                    });
+                  </script>";
+            unset($_SESSION['mensaje']);
+        }
+        ?>
+
         <form method="POST">
             <div class="mb-3">
                 <label for="categoria" class="form-label">Categoría</label>

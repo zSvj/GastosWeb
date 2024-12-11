@@ -1,40 +1,33 @@
 <?php
-require_once "config/Database.php";
+session_start();
 
-// Verifica si se pasó el ID de la transacción
+require_once 'config/Database.php';
+
 if (isset($_GET['id'])) {
     $id = $_GET['id'];
 
+    // Crear conexión a la base de datos
     $database = new Database();
     $db = $database->getConnection();
 
-    // Consulta para eliminar la transacción
-    $query = "DELETE FROM transacciones WHERE id = :id";
+    // Preparar la consulta de eliminación
+    $query = "DELETE FROM transacciones WHERE id = :id"; // Asegúrate de que la tabla es 'transacciones'
     $stmt = $db->prepare($query);
     $stmt->bindParam(':id', $id);
 
+    // Ejecutar la consulta
     if ($stmt->execute()) {
-        echo "<script>
-                Swal.fire({
-                    title: '¡Éxito!',
-                    text: 'Transacción eliminada correctamente.',
-                    icon: 'success',
-                    confirmButtonText: 'Aceptar'
-                }).then(function() {
-                    window.location.href = 'transacciones.php';
-                });
-              </script>";
+        $_SESSION['mensaje'] = 'Transacción eliminada con éxito!';
     } else {
-        echo "<script>
-                Swal.fire({
-                    title: '¡Error!',
-                    text: 'No se pudo eliminar la transacción.',
-                    icon: 'error',
-                    confirmButtonText: 'Aceptar'
-                });
-              </script>";
+        $_SESSION['mensaje'] = 'Hubo un error al eliminar la transacción.';
     }
+
+    // Redirigir a la página de transacciones después de la eliminación
+    header('Location: transacciones.php');
+    exit();
 } else {
-    echo "ID no proporcionado.";
+    $_SESSION['mensaje'] = 'No se especificó un ID de transacción.';
+    header('Location: transacciones.php');
+    exit();
 }
 ?>
